@@ -1,0 +1,13 @@
+ultralytics
+opencv-python
+torch
+torchvision
+tensorflow
+numpy
+matplotlib
+pillow
+duckduckgo-search
+Pillow
+tqdm
+requests
+imagehash
