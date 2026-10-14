@@ -1,0 +1,32 @@
+{
+  "coordinate_system": "image_pixels",
+  "description": "Predefined tactical restricted airspace geofence zones defined in 2D image-space coordinates (pixels). IMPORTANT: Coordinates represent pixel locations relative to the video/camera sensor frame, not real-world GPS/geographic coordinates, and should be calibrated according to video frame dimensions and designated monitoring areas.",
+  "zones": [
+    {
+      "id": "restricted_zone_1",
+      "name": "Restricted Airspace Sector Alpha",
+      "enabled": true,
+      "polygon": [
+        [200, 150],
+        [500, 150],
+        [500, 350],
+        [200, 350]
+      ],
+      "color_bgr": [0, 0, 220],
+      "description": "Primary high-security air corridor perimeter."
+    },
+    {
+      "id": "restricted_zone_2",
+      "name": "Restricted Airspace Sector Bravo",
+      "enabled": true,
+      "polygon": [
+        [650, 100],
+        [950, 100],
+        [950, 320],
+        [650, 320]
+      ],
+      "color_bgr": [0, 140, 255],
+      "description": "Secondary tactical buffer perimeter."
+    }
+  ]
+}

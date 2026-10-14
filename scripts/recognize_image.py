@@ -1,15 +1,33 @@
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
-import numpy as np, cv2, os
+import numpy as np, cv2, os, json
 
-detector = YOLO("runs/detect/ImprovedDetector/weights/best.pt")
-classifier = load_model("models/aircraft_classifier.h5")
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
-class_names = sorted(os.listdir("dataset/classifier_dataset/train"))
+DETECTOR_PATH = os.path.join(PROJECT_ROOT, "runs", "detect", "AircraftDetector3", "weights", "best.pt")
+if not os.path.exists(DETECTOR_PATH):
+    DETECTOR_PATH = os.path.join(PROJECT_ROOT, "models", "detector.pt")
 
-input_folder = "images_for_test_recognize"
-output_folder = "output"
+CLASSIFIER_PATH = os.path.join(PROJECT_ROOT, "models", "aircraft_classifier.h5")
+CLASSES_PATH    = os.path.join(PROJECT_ROOT, "config", "classes.json")
+
+with open(CLASSES_PATH, "r", encoding="utf-8") as f:
+    class_names = json.load(f)
+
+detector = YOLO(DETECTOR_PATH)
+classifier = load_model(CLASSIFIER_PATH)
+
+expected_classes = classifier.output_shape[-1]
+if len(class_names) != expected_classes:
+    raise ValueError(
+        f"Class count mismatch: config/classes.json defines {len(class_names)} classes, "
+        f"but classifier model output shape expects {expected_classes} classes."
+    )
+
+input_folder = os.path.join(PROJECT_ROOT, "images_for_test_recognize")
+output_folder = os.path.join(PROJECT_ROOT, "output")
 os.makedirs(output_folder, exist_ok=True)
 
 for file in os.listdir(input_folder):
@@ -33,13 +51,26 @@ for file in os.listdir(input_folder):
         resized = cv2.resize(crop, (224, 224))
         arr = image.img_to_array(resized) / 255.0
         arr = np.expand_dims(arr, axis=0)
-        pred = np.argmax(classifier.predict(arr), axis=1)[0]
-        label = class_names[pred]
+        preds = classifier.predict(arr, verbose=False)[0]
+        idx = int(np.argmax(preds))
+        label = class_names[idx]
+        conf = float(preds[idx])
 
-        cv2.rectangle(image_bgr, (x1, y1), (x2, y2), (0,255,0), 2)
-        cv2.putText(image_bgr, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
+        cv2.rectangle(image_bgr, (x1, y1), (x2, y2), (10, 132, 212), 2)
+        H_img, W_img = image_bgr.shape[:2]
+        txt = f"{label} | {conf:.0%}"
+        (tw, th), _ = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, 0.60, 2)
+        bw, bh = tw + 16, th + 12
+        by1 = y1 - bh if y1 - bh >= 0 else y1
+        by2 = by1 + bh
+        bx1 = max(0, min(x1, W_img - bw))
+        bx2 = min(W_img, bx1 + bw)
+        ty = by2 - 6 if y1 - bh >= 0 else by1 + th + 6
+        cv2.rectangle(image_bgr, (bx1, by1), (bx2, by2), (46, 76, 28), -1)
+        cv2.rectangle(image_bgr, (bx1, by1), (bx2, by2), (10, 132, 212), 1)
+        cv2.putText(image_bgr, txt, (bx1 + 8, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.60, (240, 234, 216), 2, cv2.LINE_AA)
 
     cv2.imwrite(os.path.join(output_folder, file), image_bgr)
     print(f"Processed and saved: {file}")
 
-print(" Recognition complete! Check the 'output' folder.")
+print("Recognition complete! Check the 'output' folder.")
